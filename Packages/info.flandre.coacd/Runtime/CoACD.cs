@@ -46,8 +46,13 @@ public unsafe class CoACD : MonoBehaviour
 
 	[DllImport("lib_coacd", CallingConvention = CallingConvention.Cdecl, EntryPoint = "CoACD_run")]
 	static extern MeshArrayInterface Run(ref MeshInterface mesh, double threshold, int max_convex_hull, int preprocess_mode, int prep_resolution, int sample_resolution,
-																			int mcts_nodes, int mcts_iteration, int mcts_max_depth, bool pca, bool merge,
-																			bool decimate, int max_ch_vertex, bool extrude, double extrude_margin, int apx_mode, uint seed);
+		int mcts_nodes, int mcts_iteration, int mcts_max_depth,
+		[MarshalAs(UnmanagedType.U1)] bool pca,
+		[MarshalAs(UnmanagedType.U1)] bool merge,
+		[MarshalAs(UnmanagedType.U1)] bool decimate,
+		int max_ch_vertex,
+		[MarshalAs(UnmanagedType.U1)] bool extrude,
+		double extrude_margin, int apx_mode, uint seed);
 
 	public enum PreprocessMode { Auto = 0, On = 1, Off = 2 }
 	public enum ApproximateMode { ConvexHull = 0, Box = 1 }
