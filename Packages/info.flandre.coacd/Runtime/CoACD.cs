@@ -46,9 +46,11 @@ public unsafe class CoACD : MonoBehaviour
 
 	[DllImport("lib_coacd", CallingConvention = CallingConvention.Cdecl, EntryPoint = "CoACD_run")]
 	static extern MeshArrayInterface Run(ref MeshInterface mesh, double threshold, int max_convex_hull, int preprocess_mode, int prep_resolution, int sample_resolution,
-																			int mcts_nodes, int mcts_iteration, int mcts_max_depth, bool pca, bool merge, uint seed);
+																			int mcts_nodes, int mcts_iteration, int mcts_max_depth, bool pca, bool merge,
+																			bool decimate, int max_ch_vertex, bool extrude, double extrude_margin, int apx_mode, uint seed);
 
 	public enum PreprocessMode { Auto = 0, On = 1, Off = 2 }
+	public enum ApproximateMode { ConvexHull = 0, Box = 1 }
 	public enum LogLevel { Off, Info, Warn, Error, Critical }
 	public MeshFilter target;
 	public bool isTrigger,
@@ -60,7 +62,8 @@ public unsafe class CoACD : MonoBehaviour
 	{
 		public static Parameters Init() => new Parameters() {
 			threshold = 0.05, preprocessMode = PreprocessMode.Auto, preprocessResolution = 50, sampleResolution = 2000,
-			mctsNodes = 20, mctsIteration    = 150, mctsMaxDepth = 3, pca = false, merge = true, maxConvexHull = -1, seed = 0
+			mctsNodes = 20, mctsIteration = 150, mctsMaxDepth = 3, pca = false, merge = true, maxConvexHull = -1,
+			decimate = false, maxChVertex = 256, extrude = false, extrudeMargin = 0.01, approximateMode = ApproximateMode.ConvexHull, seed = 0
 		};
 
 		[Range(0.01f, 1f)]
@@ -89,8 +92,19 @@ public unsafe class CoACD : MonoBehaviour
 		public bool merge;
 		[Tooltip("max number of convex hulls generated, -1 for no limit")]
 		public int maxConvexHull;
-		[Tooltip(
-			"max # convex hulls in the result, -1 for no maximum limitation, works only when merge is enabled, default = -1 (may introduce convex hull with a concavity larger than the threshold)")]
+		[Tooltip("enable max vertex constraint per convex hull")]
+		public bool decimate;
+		[Range(32, 256)]
+		[Tooltip("max vertices per convex hull (only when decimate is enabled)")]
+		public int maxChVertex;
+		[Tooltip("extrude neighboring convex hulls along overlapping faces")]
+		public bool extrude;
+		[Range(0.001f, 0.1f)]
+		[Tooltip("extrusion margin")]
+		public double extrudeMargin;
+		[Tooltip("approximation shape type")]
+		public ApproximateMode approximateMode;
+		[Tooltip("random seed for reproducibility")]
 		public uint seed;
 	}
 	public Parameters parameters = Parameters.Init();
@@ -129,7 +143,8 @@ public unsafe class CoACD : MonoBehaviour
 			fixed (int* fptr = unityF) {
 				var mi = new MeshInterface() {vertices_ptr = vptr, vertices_count = (ulong) mesh.vertexCount, triangles_ptr = fptr, triangles_count = (ulong) (unityF.LongLength / 3)};
 				using var res = Run(ref mi, parameters.threshold, parameters.maxConvexHull, (int) parameters.preprocessMode, parameters.preprocessResolution, parameters.sampleResolution,
-					parameters.mctsNodes, parameters.mctsIteration, parameters.mctsMaxDepth, parameters.pca, parameters.merge, parameters.seed);
+					parameters.mctsNodes, parameters.mctsIteration, parameters.mctsMaxDepth, parameters.pca, parameters.merge,
+					parameters.decimate, parameters.maxChVertex, parameters.extrude, parameters.extrudeMargin, (int) parameters.approximateMode, parameters.seed);
 				var meshes = new List<Mesh>();
 				for (ulong i = 0; i < res.meshes_count; i++) {
 					var rmesh = new Mesh();
